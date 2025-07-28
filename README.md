@@ -46,3 +46,16 @@ connecting to localhost:50051
 key: "oN7o8iA3E1XvPOSs+W5X7Q5vTjdvOGlBM0UxWHZQT1M="
 Rpc succeeded with OK status
 ```
+
+### WireGuardService
+
+| Method Name | Request Type | Response Type | Description |
+| --- | --- | --- | --- |
+| CreateDevice | [CreateDevice.Request](#proto.CreateDevice.Request) | [EmptyResponse](#proto.EmptyResponse) | Creates a device |
+| ConfigureDevice | [ConfigureDevice.Request](#proto.ConfigureDevice.Request) | [EmptyResponse](#proto.EmptyResponse) | Configures a device by name |
+| GetDevices | [EmptyRequest](#proto.EmptyRequest) | [GetDevices.Response](#proto.GetDevices.Response) | Returns current devices |
+| GetDevice | [GetDevice.Request](#proto.GetDevice.Request) | [GetDevice.Response](#proto.GetDevice.Response) | Returns a device by name |
+| DeleteDevice | [DeleteDevice.Request](#proto.DeleteDevice.Request) | [EmptyResponse](#proto.EmptyResponse) | Deletes a device by name |
+| GeneratePrivateKey | [EmptyRequest](#proto.EmptyRequest) | [GeneratePrivateKey.Response](#proto.GeneratePrivateKey.Response) | Generates a new private key |
+| GeneratePublicKey | [GeneratePublicKey.Request](#proto.GeneratePublicKey.Request) | [GeneratePublicKey.Response](#proto.GeneratePublicKey.Response) | Generates a new public key from a provided private key |
+| GeneratePresharedKey | [EmptyRequest](#proto.EmptyRequest) | [GeneratePresharedKey.Response](#proto.GeneratePresharedKey.Response) | Generates a new preshared key |

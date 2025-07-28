@@ -38,7 +38,11 @@ protobuf_generate(
     PLUGIN "protoc-gen-grpc=\$<TARGET_FILE:gRPC::grpc_cpp_plugin>"
 )
 
+# Gen python
 # protoc   -I=proto   --plugin=protoc-gen-grpc_python=$(which grpc_python_plugin)   --python_out=src-client   --grpc_python_out=src-client   proto/*.proto --pyi_out=src-client
+
+# Gen proto doc
+# docker run --rm -v $(pwd)/doc:/out -v $(pwd)/proto:/protos pseudomuto/protoc-gen-doc
 
 add_executable(wgrpc
     src/main.cc

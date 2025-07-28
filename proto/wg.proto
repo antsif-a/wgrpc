@@ -2,148 +2,166 @@ syntax = "proto3";
 
 package proto;
 
+/* Structure for a time value */
 message Timespec64 {
-    int64 tv_nsec = 1;
-    int64 tv_sec = 2;
+    int64 tv_sec  = 1; // seconds
+    int64 tv_nsec = 2; // nanoseconds
 }
 
-message AllowedIp {
+/* Internet address */
+message IpAddress {
     oneof address {
-        fixed32 ipv4 = 1;
-        bytes ipv6 = 2;
+        fixed32 ipv4 = 1; // IP v4 address in a host byte order (big-endian)
+        bytes ipv6   = 2; // IP v6 address in a host byte order (big-endian)
     }
-    uint32 cidr = 3;
+    uint32 cidr      = 3; // Subnet mask
 }
 
+/* Structure describing a generic socket address. */
 message Endpoint {
     oneof address {
-        fixed32 ipv4 = 1;
-        bytes ipv6 = 2;
+        fixed32 ipv4 = 1; // IP v4 address in a host byte order (big-endian)
+        bytes ipv6   = 2; // IP v6 address in a host byte order (big-endian)
     }
-    uint32 port = 3;
+    uint32 port      = 3; // Endpoint port
 }
 
+/* WireGuard peer */
 message Peer {
-    optional bytes public_key = 1;
-    optional bytes preshared_key = 2;
+    optional bytes public_key    = 1; // public key
+    optional bytes preshared_key = 2; // preshared key
 
-    Endpoint endpoint = 3;
+    Endpoint endpoint = 3; // endpoint
 
-    Timespec64 last_handshake_time = 4;
+    Timespec64 last_handshake_time = 4; // last handshake time
 
-    uint64 rx_bytes = 5;
-    uint64 tx_bytes = 6;
-    optional uint32 persistent_keepalive_interval = 7;
+    uint64 rx_bytes = 5; // total number of bytes received by a peer
+    uint64 tx_bytes = 6; // total number of bytes transmitted by a peer
+    optional uint32 persistent_keepalive_interval = 7; // persistent keepalive interval
 
-    repeated AllowedIp allowed_ips = 8;
+    repeated IpAddress allowed_ips = 8; // allowed ip addresses
 }
 
+/* WireGuard device */
 message Device {
-    string name = 1;
+    string name = 1; // name
 
-    optional bytes public_key = 2;
-    optional bytes private_key = 3;
+    optional bytes public_key  = 2; // public key
+    optional bytes private_key = 3; // private key
 
-    optional uint32 listen_port = 5;
-    optional uint32 fwmark = 4;
+    optional uint32 listen_port = 5; // listen port
+    optional uint32 fwmark      = 4; // firewall mark
     
-    repeated Peer peers = 6;
+    repeated Peer peers = 6; // peers
 }
 
+/* Structure representing WireGuard peer configuration */
 message PeerConfiguration {
-    bytes public_key = 1;
-    optional bytes preshared_key = 2;
-    optional Endpoint endpoint = 3;
-    optional uint32 persistent_keepalive_interval = 4;
-    repeated AllowedIp allowed_ips = 5;
+    bytes public_key             = 1; // public key
+    optional bytes preshared_key = 2; // preshared key
+    optional Endpoint endpoint   = 3; // endpoint
+    optional uint32 persistent_keepalive_interval = 4; // persistent keepalive interval
+    repeated IpAddress allowed_ips = 5; // allowed ip addresses
 }
 
+/* Structure representing WireGuard device configuration */
 message DeviceConfiguration {
-    optional uint32 listen_port = 1;
-    optional uint32 fwmark = 2;
-    repeated PeerConfiguration peers = 3;
+    optional uint32 listen_port      = 1; // listen port
+    optional uint32 fwmark           = 2; // firewall mark
+    repeated PeerConfiguration peers = 3; // peers
 }
 
+/* An empty request */
 message EmptyRequest {}
+
+/* An empty response */
 message EmptyResponse {}
 
 message CreateDevice {
     message Request {
-        string name = 1;
+        string name = 1; // name of the device
     }
 }
 
 message ConfigureDevice {
     message Request {
-        string name = 1;
-        DeviceConfiguration config = 2;
+        string name                = 1; // name of the device
+        DeviceConfiguration config = 2; // device configuration
     }
 }
 
 message GetDevices {
     message Response {
-        repeated Device devices = 1;
+        repeated Device devices = 1; // devices
     }
 }
 
 message GetDevice {
     message Request {
-        string name = 1;
+        string name = 1; // name of the device
     }
     message Response {
-        Device device = 1;
+        Device device = 1; // device
     }
 }
 
 message DeleteDevice {
     message Request {
-        string name = 1;
+        string name = 1; // name of the device
     }
 }
 
 message GeneratePrivateKey {
     message Response {
-        string key = 1;
+        string key = 1; // generated private key
     }
 }
 
 message GeneratePublicKey {
     message Request {
-        string private_key = 1;
+        string private_key = 1; // key for the public key
     }
     message Response {
-        string key = 1;
+        string key = 1; // generated public key
     }
 }
 
 message GeneratePresharedKey {
     message Response {
-        string key = 1;
+        string key = 1; // generated preshared key
     }
 }
 
 service WireGuardService {
+    /* Creates a device */
     rpc CreateDevice(CreateDevice.Request)
         returns (EmptyResponse);
 
+    /* Configures a device by name */
     rpc ConfigureDevice(ConfigureDevice.Request)
         returns (EmptyResponse);
 
+    /* Returns current devices */
     rpc GetDevices(EmptyRequest)
         returns (GetDevices.Response);
 
+    /* Returns a device by name */
     rpc GetDevice(GetDevice.Request)
         returns (GetDevice.Response);
     
+    /* Deletes a device by name */
     rpc DeleteDevice(DeleteDevice.Request)
         returns (EmptyResponse);
 
+    /* Generates a new private key */
     rpc GeneratePrivateKey(EmptyRequest)
         returns (GeneratePrivateKey.Response);
 
+    /* Generates a new public key from a provided private key */
     rpc GeneratePublicKey(GeneratePublicKey.Request)
         returns (GeneratePublicKey.Response);
 
+    /* Generates a new preshared key */
     rpc GeneratePresharedKey(EmptyRequest)
         returns (GeneratePresharedKey.Response);
 }

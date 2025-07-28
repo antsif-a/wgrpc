@@ -30,6 +30,7 @@ todo:
 ipv6 support in endpoint and allowed ips
 check if device exists before get/add/del?
 Peer::last_handshake_time in seconds is incorrect
+authentication (even grpcurl doesn't work with InsecureServerCredentials)
 wireguard.c: make errors concise and informative
 */
 
@@ -353,6 +354,8 @@ int main(int argc, const char * argv[]) {
     notify(m);
 
     if (m.count("help")) {
+        println("Usage: wgrpc [options]");
+        println();
         description.print(std::cout);
         return 0;
     }
