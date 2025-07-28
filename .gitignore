@@ -1,0 +1,8 @@
+.venv
+.vscode
+build
+CMakeFiles
+__pycache__
+.clangd
+src-client
+embeddable-wg-library
