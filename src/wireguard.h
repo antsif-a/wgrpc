@@ -9,7 +9,6 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <time.h>
 #include <stdint.h>
 #include <stdbool.h>
 
