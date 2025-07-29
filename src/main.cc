@@ -43,7 +43,7 @@ void set_endpoint_m(Endpoint * m, wg_endpoint * endpoint) {
     }
 }
 
-void set_allowed_ip_m(AllowedIp * m, wg_allowedip * allowed_ip) {
+void set_ip_address_m(IpAddress * m, wg_allowedip * allowed_ip) {
     if (allowed_ip->family == AF_INET) {
         m->set_ipv4(ntohl(allowed_ip->ip4.s_addr));
         m->set_cidr(allowed_ip->cidr);
@@ -79,7 +79,7 @@ void set_peer_m(Peer * m, wg_peer * peer) {
 
     wg_allowedip* allowed_ip;
     wg_for_each_allowedip(peer, allowed_ip) {
-        set_allowed_ip_m(m->add_allowed_ips(), allowed_ip);
+        set_ip_address_m(m->add_allowed_ips(), allowed_ip);
     }
 }
 
@@ -113,7 +113,7 @@ void set_device_m(Device * m, const char * device_name, wg_device * device) {
     }
 }
 
-wg_allowedip configure_allowed_ip(AllowedIp cfg) {
+wg_allowedip configure_allowed_ip(IpAddress cfg) {
     wg_allowedip allowed_ip = {};
     if (cfg.has_ipv4()) {
         allowed_ip.family = AF_INET;
