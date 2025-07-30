@@ -1,9 +1,13 @@
 #include <print>
 #include <string>
 #include <vector>
+#include <memory>
+#include <thread>
+#include <csignal>
 
 #include <arpa/inet.h>
 #include <sys/capability.h>
+#include <sys/signalfd.h>
 
 #include <boost/program_options.hpp>
 #include <grpc++/grpc++.h>
@@ -25,6 +29,8 @@ using namespace proto;
 using namespace grpc;
 using namespace grpc::reflection;
 
+namespace po = boost::program_options;
+
 /*
 todo:
 ipv6 support in endpoint and allowed ips
@@ -32,6 +38,8 @@ check if device exists before get/add/del?
 Peer::last_handshake_time in seconds is incorrect
 authentication (even grpcurl doesn't work with InsecureServerCredentials)
 wireguard.c: make errors concise and informative
+i'm not sure how shutdown thread is safe
+clean up main function (too much responsibility?)
 */
 
 void set_endpoint_m(Endpoint * m, wg_endpoint * endpoint) {
@@ -312,19 +320,17 @@ class WireGuardServiceImpl : public WireGuardService::Service {
 
 };
 
-void run_server(std::string_view address, in_port_t port) {
-    auto endpoint = std::format("{}:{}", address, port);
-
-    WireGuardServiceImpl wg_service;
-
+std::unique_ptr<Server> run_server(std::string_view address, in_port_t port, WireGuardServiceImpl * wg_service) {
     InitProtoReflectionServerBuilderPlugin();
     auto server = ServerBuilder()
-        .AddListeningPort(endpoint, InsecureServerCredentials())
-        .RegisterService(&wg_service)
+        .AddListeningPort(std::format("{}:{}", address, port), InsecureServerCredentials())
+        .RegisterService(wg_service)
         .BuildAndStart();
 
-    println("Server listening on {}", endpoint);
-    server->Wait();
+    if (server == nullptr)
+        throw std::runtime_error("Could not start gRPC server");
+
+    return server;
 }
 
 void check_cap_net_admin() {
@@ -337,35 +343,75 @@ void check_cap_net_admin() {
         throw std::runtime_error("Failed to check CAP_NET_ADMIN capability");
 
     if (flag != CAP_SET)
-        throw std::runtime_error("CAP_NET_ADMIN capability is required");
+        throw std::logic_error("CAP_NET_ADMIN capability is required");
 }
 
-using namespace boost::program_options;
+int setup_signalfd() {
+    sigset_t mask {};
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGTERM);
+    sigaddset(&mask, SIGINT);
+    if (sigprocmask(SIG_BLOCK, &mask, nullptr) < 0)
+        throw std::runtime_error("Could not set up process signal mask");
+    auto sfd = signalfd(-1, &mask, 0);
+    if (sfd < 0)
+        throw std::runtime_error("Could not set up process signal mask");
+    return sfd;
+}
 
 int main(int argc, const char * argv[]) {
-    options_description description("Options");
+    try {
+        check_cap_net_admin();
+    } catch (std::exception & err) {
+        println(stderr, "{}", err.what());
+        return 1;
+    }
+
+    po::options_description description("Options");
     description.add_options()
         ("help", "Show help")
-        ("address", value<std::string>()->value_name("ip")->default_value(DEFAULT_ADDRESS), "Set address")
-        ("port", value<in_port_t>()->value_name("port")->default_value(DEFAULT_PORT), "Set port");
+        ("address", po::value<std::string>()->value_name("ip")->default_value(DEFAULT_ADDRESS), "Set address")
+        ("port", po::value<in_port_t>()->value_name("port")->default_value(DEFAULT_PORT), "Set port");
 
-    variables_map m;
-    store(parse_command_line(argc, argv, description), m);
-    notify(m);
+    po::variables_map m;
+    try {
+        po::store(po::parse_command_line(argc, argv, description), m);
+    } catch (po::error_with_option_name & err) {
+        println(stderr, "{}", err.what());
+        println(stderr, "Usage: wgrpc [options]");
+        println(stderr);
+        description.print(std::cerr);
+        return 1;
+    }
+
+    po::notify(m);
 
     if (m.count("help")) {
-        println("Usage: wgrpc [options]");
-        println();
-        description.print(std::cout);
-        return 0;
+        println(stderr, "Usage: wgrpc [options]");
+        println(stderr);
+        description.print(std::cerr);
+        return 1;
     }
 
     auto address = m["address"].as<std::string>();
     auto port = m["port"].as<in_port_t>();
 
     try {
-        check_cap_net_admin();
-        run_server(address, port);
+        auto signalfd = setup_signalfd();
+        WireGuardServiceImpl wg_service;
+        auto server = run_server(address, port, &wg_service);
+        println("Server listening on {}:{}", address, port);
+
+        std::thread shutdown([&signalfd, &server]() {
+            struct signalfd_siginfo info;
+            if (read(signalfd, &info, sizeof(info)) > 0) {
+                println("Shutting down...");
+                server->Shutdown();
+            }
+        });
+
+        server->Wait();
+        shutdown.join();
     } catch (std::exception & err) {
         println(stderr, "{}", err.what());
         return 1;
